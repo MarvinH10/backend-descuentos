@@ -15,8 +15,8 @@ const PASSWORD = process.env.ODOO_PASSWORD as string;
 
 let uid: number | null = null;
 
-interface BarcodeRequest {
-  barcode: string;
+interface BarcodeRequest { 
+  barcode: string; 
 }
 
 interface PricelistRule {
@@ -83,19 +83,19 @@ async function getActivePricelists(): Promise<number[]> {
 
 async function getAllApplicableRules(productId: number, templateId: number, categoryId?: number): Promise<PricelistRule[]> {
   if (!uid) await login();
-
+  
   const activePricelistIds = await getActivePricelists();
-
+  
   let conditions: any[] = [
     ['pricelist_id', 'in', activePricelistIds],
     '|', '|', '|',
     ['applied_on', '=', '3_global'],
     '&', ['applied_on', '=', '2_product_category'],
-    categoryId ? ['categ_id', '=', categoryId] : ['categ_id', '!=', false],
+         categoryId ? ['categ_id', '=', categoryId] : ['categ_id', '!=', false],
     '&', ['applied_on', '=', '1_product'],
-    ['product_tmpl_id', '=', templateId],
+         ['product_tmpl_id', '=', templateId],
     '&', ['applied_on', '=', '0_product_variant'],
-    ['product_id', '=', productId]
+         ['product_id', '=', productId]
   ];
 
   const rulesResp = await axios.post(ODOO_URL, {
@@ -114,10 +114,10 @@ async function getAllApplicableRules(productId: number, templateId: number, cate
         [conditions],
         {
           fields: [
-            'min_quantity',
-            'fixed_price',
-            'percent_price',
-            'compute_price',
+            'min_quantity', 
+            'fixed_price', 
+            'percent_price', 
+            'compute_price', 
             'pricelist_id',
             'applied_on',
             'categ_id',
@@ -168,7 +168,7 @@ function separateRulesByApplication(rules: PricelistRule[], productId: number, t
 
 async function getProductCategory(templateId: number): Promise<number | null> {
   if (!uid) await login();
-
+  
   const resp = await axios.post(ODOO_URL, {
     jsonrpc: '2.0',
     method: 'call',
@@ -194,39 +194,6 @@ async function getProductCategory(templateId: number): Promise<number | null> {
     return Array.isArray(categoryId) ? categoryId[0] : null;
   }
   return null;
-}
-
-async function getVariantNames(variantValueIds: number[]): Promise<string> {
-  if (!uid) await login();
-
-  if (!Array.isArray(variantValueIds) || variantValueIds.length === 0) {
-    return '';
-  }
-
-  const resp = await axios.post(ODOO_URL, {
-    jsonrpc: '2.0',
-    method: 'call',
-    id: Date.now(),
-    params: {
-      service: 'object',
-      method: 'execute_kw',
-      args: [
-        DB,
-        uid,
-        PASSWORD,
-        'product.template.attribute.value',
-        'search_read',
-        [[['id', 'in', variantValueIds]]],
-        { fields: ['name'] }
-      ]
-    }
-  });
-
-  const variants = resp.data.result;
-  if (Array.isArray(variants) && variants.length > 0) {
-    return variants.map((v: any) => v.name).join(' ');
-  }
-  return '';
 }
 
 app.post(
@@ -260,21 +227,23 @@ app.post(
         res.status(404).json({ success: false, error: 'Producto no encontrado' });
         return;
       }
-
+      
       const product = prods[0];
       const productId = product.id;
       const templateId = product.product_tmpl_id[0];
-
+      
       const categoryId = await getProductCategory(templateId);
-
+      
       const allRules = await getAllApplicableRules(productId, templateId, categoryId || undefined);
-
+      
       const rulesByApplication = separateRulesByApplication(allRules, productId, templateId, categoryId || undefined);
 
-      const variantNames = await getVariantNames(product.product_template_variant_value_ids || []);
-
-      const productName = variantNames
-        ? `${product.name} - ${variantNames}`
+      const variantNames = Array.isArray(product.product_template_variant_value_ids)
+        ? product.product_template_variant_value_ids.map((v: any) => v.name).join(' ')
+        : '';
+      
+      const productName = variantNames 
+        ? `${product.name} ${variantNames}`
         : product.name;
 
       Object.keys(rulesByApplication).forEach(key => {
@@ -330,21 +299,23 @@ app.get(
         res.status(404).json({ success: false, error: 'Producto no encontrado' });
         return;
       }
-
+      
       const product = prods[0];
       const productId = product.id;
       const templateId = product.product_tmpl_id[0];
-
+      
       const categoryId = await getProductCategory(templateId);
-
+      
       const allRules = await getAllApplicableRules(productId, templateId, categoryId || undefined);
-
+      
       const rulesByApplication = separateRulesByApplication(allRules, productId, templateId, categoryId || undefined);
 
-      const variantNames = await getVariantNames(product.product_template_variant_value_ids || []);
-
-      const productName = variantNames
-        ? `${product.name} - ${variantNames}`
+      const variantNames = Array.isArray(product.product_template_variant_value_ids)
+        ? product.product_template_variant_value_ids.map((v: any) => v.name).join(' ')
+        : '';
+      
+      const productName = variantNames 
+        ? `${product.name} ${variantNames}`
         : product.name;
 
       Object.keys(rulesByApplication).forEach(key => {
